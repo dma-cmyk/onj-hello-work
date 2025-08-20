@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>キャリアゲート</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>
+        @keyframes background-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0) scale(1); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px) scale(1.05); } 20%, 40%, 60%, 80% { transform: translateX(5px) scale(1.05); } }
+        @keyframes glitch { 2%,64%{transform:translate(2px,0) skew(0deg)} 4%,60%{transform:translate(-2px,0) skew(0deg)} 62%{transform:translate(0,0) skew(5deg)} }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: background-pan 15s ease infinite;
+            cursor: cell;
+        }
+        .modal-content::-webkit-scrollbar { width: 8px; }
+        .modal-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .modal-content::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .modal-content::-webkit-scrollbar-thumb:hover { background: #555; }
+        .modal-hidden { display: none; opacity: 0; transform: scale(0.95); }
+        .modal-visible { display: flex; opacity: 1; transform: scale(1); transition: opacity 0.3s ease, transform 0.3s ease; }
+        .modal-backdrop { transition: background-color 0.3s ease; }
+        #shobon {
+            position: fixed;
+            font-size: 2rem;
+            color: white;
+            text-shadow: 0 0 5px black;
+            transition: top 2s ease-in-out, left 2s ease-in-out;
+            z-index: 9999;
+            cursor: pointer;
+        }
+        .gacha-modal-content { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+        .glitch-text { animation: glitch 1s linear infinite; }
+        #speech-bubble {
+            position: fixed;
+            background: white;
+            color: black;
+            padding: 10px 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        #speech-bubble.visible { opacity: 1; }
+        #speech-bubble.fade-out { animation: fadeOut 0.5s forwards; }
+        #speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 20px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- AAキャラ -->
+    <div id="shobon">( ´・ω・｀)</div>
+    <div id="speech-bubble"></div>
+
+    <!-- ヘッダー -->
+    <header class="bg-white/80 backdrop-blur-sm shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4 md:gap-0">
+            <div>
+                <h1 id="main-title" class="text-2xl md:text-3xl font-bold text-blue-600">キャリアゲート</h1>
+                <p class="text-gray-500 mt-1">あなたの未来を見つける場所</p>
+            </div>
+            <button id="view-my-page-btn" class="bg-indigo-500 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-600 transition duration-300 transform hover:scale-105">
+                マイページ
+            </button>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="container mx-auto px-4 py-8">
+
+        <!-- 仕事ガチャ -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-8 text-center">
+            <h2 class="text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 glitch-text">一発逆転！仕事ガチャ</h2>
+            <p class="text-gray-600 mb-4">検索とか面倒なニキはコレや！</p>
+            <button id="gacha-btn" class="bg-gradient-to-r from-amber-400 to-yellow-500 text-white font-bold py-3 px-8 rounded-full hover:scale-105 transition-transform duration-300 shadow-xl">
+                運命のガチャを回す
+            </button>
+        </div>
+
+        <!-- 検索フォーム -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-xl font-semibold mb-4">求人を探す</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div class="md:col-span-2 lg:col-span-2">
+                    <label for="keyword" class="block text-sm font-medium text-gray-700 mb-1">キーワード</label>
+                    <input type="text" id="keyword" placeholder="例: 勇者、怪獣、ねこ" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700 mb-1">勤務地</label>
+                    <select id="location" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">どこでも</option>
+                        <option value="異世界">異世界</option>
+                        <option value="サイバー空間">サイバー空間</option>
+                        <option value="撮影所">撮影所</option>
+                        <option value="ドバイ">ドバイ</option>
+                        <option value="依頼による">依頼による</option>
+                        <option value="曰く付きの場所">曰く付きの場所</option>
+                    </select>
+                </div>
+                <div class="self-end">
+                    <button id="search-btn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300">
+                        検索する
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">こだわり条件</h3>
+                <div class="flex flex-wrap gap-x-6 gap-y-2">
+                    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="no-overtime" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"><span class="ml-2 text-gray-700">残業なし</span></label>
+                    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="remote-ok" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"><span class="ml-2 text-gray-700">リモート可</span></label>
+                    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" id="inexperienced-ok" class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"><span class="ml-2 text-gray-700">未経験OK</span></label>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="text-lg font-semibold mb-4 text-white" id="job-count"></h3>
+            <div id="job-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            <p id="no-results" class="text-center bg-white/80 p-4 rounded-md text-gray-700 mt-8 hidden">条件に合う求人は見つかりませんでした。</p>
+        </div>
+    </main>
+
+    <!-- モーダル各種 -->
+    <div id="job-modal" class="modal-hidden fixed inset-0 bg-black bg-opacity-60 items-center justify-center p-4 z-50 modal-backdrop"><div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"><div class="flex justify-between items-center p-4 border-b"><h2 id="modal-title" class="text-xl font-bold text-gray-900"></h2><button id="close-modal-details" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button></div><div id="modal-body" class="p-6 overflow-y-auto modal-content"></div><div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg"><button id="apply-btn" class="bg-green-500 text-white font-bold py-2 px-6 rounded-md hover:bg-green-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">この求人に応募する</button></div></div></div>
+    <div id="my-page-modal" class="modal-hidden fixed inset-0 bg-black bg-opacity-60 items-center justify-center p-4 z-50 modal-backdrop"><div class="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"><div class="flex justify-between items-center p-4 border-b"><h2 class="text-xl font-bold text-gray-900">マイページ</h2><button id="close-my-page-modal" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button></div><div id="my-page-modal-body" class="p-6 overflow-y-auto modal-content"></div></div></div>
+    <div id="gacha-result-modal" class="modal-hidden fixed inset-0 bg-black bg-opacity-60 items-center justify-center p-4 z-50 modal-backdrop"><div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col gacha-modal-content"><div class="flex justify-between items-center p-4 border-b"><h2 id="gacha-modal-title" class="text-xl font-bold text-gray-900"></h2><button id="close-gacha-modal" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button></div><div id="gacha-modal-body" class="p-6 overflow-y-auto modal-content"></div><div class="flex justify-end p-4 border-t bg-gray-50 rounded-b-lg"><button id="gacha-apply-btn" class="bg-green-500 text-white font-bold py-2 px-6 rounded-md hover:bg-green-600 transition duration-300">これに応募する！</button></div></div></div>
+    <div id="confirm-modal" class="modal-hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50 modal-backdrop"><div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm"><p id="confirm-message" class="text-center mb-6"></p><div class="flex justify-center gap-4"><button id="confirm-yes" class="bg-red-500 text-white font-bold py-2 px-6 rounded-md hover:bg-red-600">はい</button><button id="confirm-no" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-md hover:bg-gray-400">いいえ</button></div></div></div>
+    <div id="alert-box" class="hidden fixed top-5 right-5 bg-blue-500 text-white py-3 px-5 rounded-lg shadow-lg transition-transform duration-300 transform translate-x-full"><p id="alert-message"></p></div>
+
+    <script>
+        const jobs = [
+            { id: 9, title: '異世界の勇者', company: 'アストラル王国', location: '異世界', salary: '魔王討伐の暁には国の半分', description: '急募！魔王を倒してくれる勇者を召喚します。剣と魔法の心得がある方、チート能力持ちの方大歓迎！', details: { '仕事内容': '魔王軍との戦闘、ダンジョン攻略、姫の救出など。仲間との絆を深めながら世界を救ってください。', '応募資格': '高校生～社会人。トラックに轢かれても文句を言わない方。強い正義感をお持ちの方。', '勤務時間': '24時間365日（魔王を倒すまで）', '休日休暇': '村祭りの日', '福利厚生': '伝説の武具一式支給、経験値ボーナス、死亡時教会で復活可能（所持金半減）' }, tags: ['勇者', '異世界', 'チート'], remote: false, noOvertime: false, inexperienced: true },
+            { id: 10, title: 'ねこの世話係', company: 'ねこパラダイス島', location: 'どこでも', salary: 'ねこの癒やし（プライスレス）', description: '島中にいるねこ達にご飯をあげたり、遊んであげたりするだけの簡単なお仕事です。ねこ好きには天国。', details: { '仕事内容': 'ねこのブラッシング、爪切り、トイレ掃除、無限のナデナデ。時々島に流れ着く漂流物を拾う。', '応募資格': 'ねこアレルギーでない方。ねこに人生を捧げられる方。', '勤務時間': 'ねこが起きてから寝るまで', '休日休暇': 'ねこの機嫌が良い日', '福利厚生': '毎日ねこに囲まれる、新鮮な魚が食べ放題' }, tags: ['ねこ', '癒やし', '楽な仕事'], remote: true, noOvertime: true, inexperienced: true },
+            { id: 12, title: 'タイムパトロール隊員', company: '時空管理局', location: 'どこでも', salary: '時空の平和を守るやりがい', description: '歴史を改変しようとする時間犯罪者を取り締まる重要なお仕事。未来も過去も君の手に！', details: { '仕事内容': 'タイムマシンの操縦、時間犯罪者の追跡・捕縛、歴史改変の阻止。たまに恐竜に会える。', '応募資格': '歴史の知識が豊富な方。タイムパラドックスに精神を汚染されない方。', '勤務時間': 'シフト制（時間軸が歪むことあり）', '休日休暇': '特異点が発生しない日', '福利厚生': '最新型タイムマシン貸与、未来のガジェット使い放題' }, tags: ['未来', '歴史', 'ロマン'], remote: true, noOvertime: false, inexperienced: false },
+            { id: 13, title: 'AIに監視されるだけの仕事', company: '巨大知性体「マザー」', location: 'サイバー空間', salary: '評価に応じてベーシックインカムを支給', description: 'あなたの全行動、思考、感情がAIによって監視・分析されます。ただ普通に生活するだけでOK。', details: { '仕事内容': '食事、睡眠、趣味など、普段通りの生活を送るだけ。AIが人類のサンプルデータを収集します。', '応募資格': 'プライバシーを捧げられる方。AIに支配されることに抵抗がない方。', '勤務時間': '24時間365日', '休日休暇': 'AIのメンテナンス日', '福利厚生': '衣食住完備、最適な健康管理プログラム' }, tags: ['AI', '監視', '楽な仕事'], remote: true, noOvertime: true, inexperienced: true },
+            { id: 14, title: '怪獣の着ぐるみアクター', company: '巨大特撮株式会社', location: '撮影所', salary: '1日1回の街破壊につき10万円', description: 'ヒーローに倒される怪獣の中の人を募集。体力とリアクション芸に自信のある方。', details: { '仕事内容': '街のミニチュアセットを派手に破壊する。ビームを吐く（特殊効果）。ヒーローの必殺技を食らって爆発四散する（スタント）。', '応募資格': '夏場の暑さに耐えられる方。ヒーローに負けても心を折らない方。', '勤務時間': 'ヒーローが登場してから倒されるまで', '休日休暇': 'ヒーローが休暇の日', '福利厚生': '爆発耐性のある特注スーツ支給、撮影後の温泉利用可' }, tags: ['怪獣', '特撮', '体力勝負'], remote: false, noOvertime: true, inexperienced: true },
+            { id: 15, title: 'Youtuberの炎上火消し人', company: '株式会社ネット平和維持軍', location: 'サイバー空間', salary: '1鎮火につき成功報酬', description: '炎上したYoutuberのコメント欄を鎮火させるお仕事。ネットバトルに自信のある論破王求む。', details: { '仕事内容': 'アンチコメントへの的確な反論、擁護コメントの投稿、無関係な話題でコメント欄を埋め尽くす。', '応募資格': '煽り耐性MAXの方。一日中PCに張り付ける方。複数のアカウントを使いこなせる方。', '勤務時間': '24時間 (炎上は待ってくれない)', '休日休暇': 'ネットが平和な日 (ほぼ無い)', '福利厚生': '高性能PC貸与、エナジードリンク飲み放題' }, tags: ['Youtuber', 'ネットバトル', '在宅'], remote: true, noOvertime: false, inexperienced: false },
+            { id: 16, title: 'レンタルなんもしない人（の偽物）', company: '合同会社なんかするかもしれん', location: '依頼による', salary: '交通費のみ（たまに奢ってもらえる）', description: '本家と間違えて依頼してきた人に対し、なんかするかもしれないし、しないかもしれない曖昧な態度を貫く仕事。', details: { '仕事内容': '依頼者の話を聞いているようで聞いていない。突然奇行に走ることがある。基本的に何もしないが、稀にすごいことをする（かもしれない）。', '応募資格': 'ポーカーフェイスが得意な方。気まずい空気に耐えられる方。', '勤務時間': '依頼による', '休日休暇': '依頼がない日', '福利厚生': '人の金で飯が食えるチャンスあり' }, tags: ['何もしない', 'コミュ力', '自由'], remote: false, noOvertime: true, inexperienced: true },
+            { id: 17, title: '石油王のペットの鷹匠', company: 'アラブの富豪', location: 'ドバイ', salary: '年収3000万円（税なし）', description: '石油王が飼っている鷹のお世話係。鷹と一緒にプライベートジェットで世界を飛び回る。', details: { '仕事内容': '鷹の餌やり、フライト訓練、健康管理。たまに鷹に高級腕時計を運ばせる。', '応募資格': '鷹に好かれる方。高所恐怖症でない方。口が堅い方。', '勤務時間': '鷹の気分次第', '休日休暇': '鷹が寝ている間', '福利厚生': 'ドバイの超高級マンション住居、スーパーカー乗り放題' }, tags: ['高給', '動物', '海外'], remote: false, noOvertime: true, inexperienced: true },
+            { id: 18, title: 'プロのガチャ代行師', company: '株式会社天井まで回す', location: 'サイバー空間', salary: '10連ガチャ1回につき500円', description: '豪運を持つニキ求む！他人のアカウントでガチャを回し、神引きを目指す仕事。', details: { '仕事内容': '指定されたゲームでリセマラやガチャを代行。神引きした際のドヤ顔スクリーンショット撮影。', '応募資格': '己の運に絶対の自信がある方。爆死しても心を無にできる方。', '勤務時間': '新キャラ実装時', '休日休暇': '運営のメンテナンス時', '福利厚生': '他人の金でガチャが引ける' }, tags: ['ガチャ', 'ゲーム', '在宅'], remote: true, noOvertime: true, inexperienced: true },
+            { id: 19, title: '呪いのアイテム専門コレクター', company: 'オカルト調査団', location: '曰く付きの場所', salary: '呪物1点につき10万円～', description: '全国各地に眠る呪われた品々を回収するスリリングなお仕事。霊感の強い方、お待ちしています。', details: { '仕事内容': '廃墟、古民家、心霊スポット等を探索し、呪物を発見・回収。除霊は専門家が行うので安心。', '応募資格': '霊感が強い方、または全くない方。ホラー映画が好きな方。', '勤務時間': '主に深夜', '休日休暇': '不定休', '福利厚生': 'お祓い費用全額支給、盛り塩・お札支給' }, tags: ['オカルト', 'ホラー', '体力勝負'], remote: false, noOvertime: true, inexperienced: false },
+            { id: 20, title: '食品サンプル職人（エクストリーム）', company: 'リアルフードアート工房', location: 'どこでも', salary: '作品のリアルさによる完全歩合制', description: '誰もが見間違えるほどリアルな食品サンプルを作る仕事。たまに食べられる素材で作ることも。', details: { '仕事内容': 'ラーメンから空飛ぶスパゲッティまで、あらゆる食品のサンプルを制作。素材は樹脂からゼリーまで様々。', '応募資格': '手先が器用な方。食べ物への愛が深い方。', '勤務時間': '自由', '休日休暇': '自由', '福利厚生': '制作したサンプルの一部は持ち帰り可（食べられないものに限る）' }, tags: ['アート', '職人', '在宅'], remote: true, noOvertime: true, inexperienced: true }
+        ];
+
+        let appliedJobs = JSON.parse(localStorage.getItem('appliedJobs')) || [];
+        
+        const jobListContainer = document.getElementById('job-list');
+        const jobCountElement = document.getElementById('job-count');
+        const noResultsElement = document.getElementById('no-results');
+        const keywordInput = document.getElementById('keyword');
+        const locationSelect = document.getElementById('location');
+        const searchBtn = document.getElementById('search-btn');
+        const noOvertimeCheckbox = document.getElementById('no-overtime');
+        const remoteOkCheckbox = document.getElementById('remote-ok');
+        const inexperiencedOkCheckbox = document.getElementById('inexperienced-ok');
+        const jobModal = document.getElementById('job-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const closeModalDetailsBtn = document.getElementById('close-modal-details');
+        const applyBtn = document.getElementById('apply-btn');
+        const myPageModal = document.getElementById('my-page-modal');
+        const myPageModalBody = document.getElementById('my-page-modal-body');
+        const viewMyPageBtn = document.getElementById('view-my-page-btn');
+        const closeMyPageModalBtn = document.getElementById('close-my-page-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmYesBtn = document.getElementById('confirm-yes');
+        const confirmNoBtn = document.getElementById('confirm-no');
+        const alertBox = document.getElementById('alert-box');
+        const alertMessage = document.getElementById('alert-message');
+        const shobon = document.getElementById('shobon');
+        const speechBubble = document.getElementById('speech-bubble');
+        const gachaBtn = document.getElementById('gacha-btn');
+        const gachaResultModal = document.getElementById('gacha-result-modal');
+        const gachaModalTitle = document.getElementById('gacha-modal-title');
+        const gachaModalBody = document.getElementById('gacha-modal-body');
+        const closeGachaModalBtn = document.getElementById('close-gacha-modal');
+        const gachaApplyBtn = document.getElementById('gacha-apply-btn');
+        const mainTitle = document.getElementById('main-title');
+
+        let jobToCancelId = null;
+        let alertTimeoutId = null;
+        let speechBubbleTimeoutId = null;
+        const synth = new Tone.Synth().toDestination();
+        const emoticons = ['( ´・ω・｀)', '彡(ﾟ)(ﾟ)'];
+
+        // --- 関数 ---
+        function playSound(note = 'C4', duration = "8n") {
+            try {
+                if (Tone.context.state !== 'running') { Tone.start(); }
+                synth.triggerAttackRelease(note, duration);
+            } catch (e) {
+                console.error("Audio playback failed:", e);
+            }
+        }
+        
+        function showAlert(message, type = 'success') {
+            if (alertTimeoutId) clearTimeout(alertTimeoutId);
+            playSound(type === 'success' ? 'C5' : 'C3', '16n');
+            alertMessage.textContent = message;
+            alertBox.className = 'fixed top-5 right-5 text-white py-3 px-5 rounded-lg shadow-lg transition-transform duration-300 transform';
+            alertBox.classList.add(type === 'success' ? 'bg-blue-500' : 'bg-red-500');
+            alertBox.classList.remove('hidden', 'translate-x-full');
+            
+            alertTimeoutId = setTimeout(() => {
+                alertBox.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        function createJobCard(job) { 
+            const imageUrl = `https://picsum.photos/400/300?random=${job.id}`;
+            return `
+            <div class="bg-white/90 p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <img src="${imageUrl}" alt="${job.title}" class="w-full h-32 object-cover rounded-md mb-4" onerror="this.onerror=null;this.src='https://placehold.co/400x300/e2e8f0/64748b?text=画像なし';">
+                <h4 class="text-lg font-bold text-blue-700">${job.title}</h4>
+                <p class="text-gray-600 mt-1">${job.company}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${job.remote ? `<span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">リモート可</span>` : ''}
+                    ${job.noOvertime ? `<span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">残業なし</span>` : ''}
+                    ${job.inexperienced ? `<span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">未経験OK</span>` : ''}
+                </div>
+                <div class="mt-4 text-sm space-y-2">
+                    <p><span class="font-semibold">給与:</span> ${job.salary}</p>
+                    <p><span class="font-semibold">勤務地:</span> ${job.location}</p>
+                </div>
+                <p class="text-gray-500 mt-3 text-sm flex-grow">${job.description}</p>
+                <button class="view-details-btn mt-4 w-full bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-300 transition duration-300" data-job-id="${job.id}">詳しく見るンゴ</button>
+            </div>`; 
+        }
+        function displayJobs(jobsToDisplay) { jobListContainer.innerHTML = ''; if (jobsToDisplay.length > 0) { jobCountElement.textContent = `${jobsToDisplay.length}件の求人が見つかったで`; noResultsElement.classList.add('hidden'); jobListContainer.classList.remove('hidden'); jobsToDisplay.forEach(job => { jobListContainer.innerHTML += createJobCard(job); }); } else { jobCountElement.textContent = ''; noResultsElement.classList.remove('hidden'); jobListContainer.classList.add('hidden'); } }
+        function openModal(modalElement) { modalElement.classList.remove('modal-hidden'); modalElement.classList.add('modal-visible'); document.body.style.overflow = 'hidden'; }
+        function closeModal(modalElement) { modalElement.classList.remove('modal-visible'); modalElement.classList.add('modal-hidden'); if (!document.querySelector('.modal-visible')) { document.body.style.overflow = ''; } }
+        
+        function openDetailsModal(jobId) {
+            playSound();
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
+            modalTitle.textContent = job.title;
+            const imageUrl = `https://picsum.photos/600/400?random=${job.id}`;
+            let detailsHtml = `
+                <img src="${imageUrl}" alt="${job.title}" class="w-full h-48 object-cover rounded-md mb-4" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e2e8f0/64748b?text=画像なし';">
+                <p class="text-lg font-semibold text-gray-700">${job.company}</p>
+                <div class="mt-4 space-y-2 text-gray-600">
+                    <p><strong>給与:</strong> ${job.salary}</p>
+                    <p><strong>勤務地:</strong> ${job.location}</p>
+                </div>
+                <div class="mt-6 border-t pt-4">`;
+            for (const [key, value] of Object.entries(job.details)) {
+                detailsHtml += `<div class="mb-4"><h5 class="font-bold text-gray-800">${key}</h5><p class="text-gray-600 whitespace-pre-wrap">${value}</p></div>`;
+            }
+            detailsHtml += '</div>';
+            modalBody.innerHTML = detailsHtml;
+            applyBtn.dataset.jobId = job.id;
+            applyBtn.dataset.jobTitle = job.title;
+            if (appliedJobs.some(aj => aj.id === jobId)) {
+                applyBtn.disabled = true;
+                applyBtn.textContent = '応募済み';
+            } else {
+                applyBtn.disabled = false;
+                applyBtn.textContent = '応募してみるンゴ';
+            }
+            openModal(jobModal);
+        }
+
+        function openMyPageModal() { playSound(); myPageModalBody.innerHTML = ''; if (appliedJobs.length === 0) { myPageModalBody.innerHTML = '<p class="text-gray-500 text-center">応募済みの求人はまだありません。</p>'; } else { const sortedAppliedJobs = [...appliedJobs].sort((a, b) => new Date(b.date) - new Date(a.date)); sortedAppliedJobs.forEach(appliedJob => { const job = jobs.find(j => j.id === appliedJob.id); if (!job) return; const appliedDate = new Date(appliedJob.date).toLocaleString('ja-JP'); myPageModalBody.innerHTML += `<div class="border-b py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"><div><h4 class="font-bold text-lg text-gray-800">${job.title}</h4><p class="text-sm text-gray-600">${job.company} / ${job.location}</p><p class="text-xs text-gray-500 mt-1">応募日時: ${appliedDate}</p></div><button class="cancel-application-btn bg-red-500 text-white font-bold py-2 px-4 rounded-md hover:bg-red-600 transition duration-300 self-start md:self-center" data-job-id="${job.id}">応募をキャンセル</button></div>`; }); } openModal(myPageModal); }
+        function performSearch() { const keyword = keywordInput.value.toLowerCase().trim(); const location = locationSelect.value; const noOvertime = noOvertimeCheckbox.checked; const remoteOk = remoteOkCheckbox.checked; const inexperiencedOk = inexperiencedOkCheckbox.checked; const filteredJobs = jobs.filter(job => { const keywordMatch = keyword === '' || job.title.toLowerCase().includes(keyword) || job.company.toLowerCase().includes(keyword) || job.description.toLowerCase().includes(keyword) || job.tags.some(tag => tag.toLowerCase().includes(keyword)); const locationMatch = location === '' || job.location === location || job.location === 'どこでも'; const noOvertimeMatch = !noOvertime || job.noOvertime; const remoteOkMatch = !remoteOk || job.remote; const inexperiencedOkMatch = !inexperiencedOk || job.inexperienced; return keywordMatch && locationMatch && noOvertimeMatch && remoteOkMatch && inexperiencedOkMatch; }); displayJobs(filteredJobs); }
+        function moveShobon() { const x = Math.random() * (window.innerWidth - 100); const y = Math.random() * (window.innerHeight - 100); shobon.style.left = `${x}px`; shobon.style.top = `${y}px`; shobon.textContent = emoticons[Math.floor(Math.random() * emoticons.length)]; }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            displayJobs(jobs);
+            moveShobon();
+            setInterval(moveShobon, 2000);
+            const fonts = ['DotGothic16', 'Kiwi Maru', 'Mochiy Pop One', 'RocknRoll One', 'Yuji Syuku'];
+            const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
+            const link = document.createElement('link');
+            link.href = `https://fonts.googleapis.com/css2?family=${randomFont.replace(/ /g, '+')}&display=swap`;
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+            mainTitle.style.fontFamily = `'${randomFont}', sans-serif`;
+        });
+        searchBtn.addEventListener('click', () => { playSound(); performSearch(); });
+        [noOvertimeCheckbox, remoteOkCheckbox, inexperiencedOkCheckbox].forEach(cb => { cb.addEventListener('change', performSearch); });
+        keywordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { playSound(); performSearch(); } });
+        jobListContainer.addEventListener('click', (e) => { const button = e.target.closest('.view-details-btn'); if (button) { openDetailsModal(parseInt(button.dataset.jobId, 10)); } });
+        
+        closeModalDetailsBtn.addEventListener('click', () => closeModal(jobModal));
+        jobModal.addEventListener('click', (e) => { if (e.target === jobModal) closeModal(jobModal); });
+        closeMyPageModalBtn.addEventListener('click', () => closeModal(myPageModal));
+        myPageModal.addEventListener('click', (e) => { if (e.target === myPageModal) closeModal(myPageModal); });
+        closeGachaModalBtn.addEventListener('click', () => closeModal(gachaResultModal));
+        gachaResultModal.addEventListener('click', (e) => { if (e.target === gachaResultModal) closeModal(gachaResultModal); });
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { [jobModal, myPageModal, confirmModal, gachaResultModal].forEach(m => { if (m.classList.contains('modal-visible')) closeModal(m); }); } });
+
+        viewMyPageBtn.addEventListener('click', () => { openMyPageModal(); });
+        
+        applyBtn.addEventListener('click', () => { const jobId = parseInt(applyBtn.dataset.jobId, 10); const jobTitle = applyBtn.dataset.jobTitle; if (!appliedJobs.some(aj => aj.id === jobId)) { appliedJobs.push({ id: jobId, date: new Date().toISOString() }); localStorage.setItem('appliedJobs', JSON.stringify(appliedJobs)); showAlert(`「${jobTitle}」への応募完了やで！面接頑張るんやで！`); } closeModal(jobModal); });
+
+        myPageModalBody.addEventListener('click', (e) => { if (e.target.classList.contains('cancel-application-btn')) { playSound('C3'); jobToCancelId = parseInt(e.target.dataset.jobId, 10); confirmMessage.textContent = '本当にこの求人の応募をキャンセルしますか？'; openModal(confirmModal); } });
+        confirmYesBtn.addEventListener('click', () => { if (jobToCancelId !== null) { appliedJobs = appliedJobs.filter(aj => aj.id !== jobToCancelId); localStorage.setItem('appliedJobs', JSON.stringify(appliedJobs)); showAlert('応募をキャンセルしました。'); jobToCancelId = null; openMyPageModal(); } closeModal(confirmModal); });
+        confirmNoBtn.addEventListener('click', () => { jobToCancelId = null; closeModal(confirmModal); });
+
+        gachaBtn.addEventListener('click', () => { const now = Tone.now(); synth.triggerAttackRelease("C4", "8n", now); synth.triggerAttackRelease("E4", "8n", now + 0.2); synth.triggerAttackRelease("G4", "8n", now + 0.4); const randomJob = jobs[Math.floor(Math.random() * jobs.length)]; gachaModalTitle.textContent = `結果発表！`; gachaModalBody.innerHTML = createJobCard(randomJob); gachaApplyBtn.dataset.jobId = randomJob.id; gachaApplyBtn.dataset.jobTitle = randomJob.title; setTimeout(() => { synth.triggerAttackRelease("C5", "4n", Tone.now()); openModal(gachaResultModal); }, 600); });
+        gachaApplyBtn.addEventListener('click', () => { const jobId = parseInt(gachaApplyBtn.dataset.jobId, 10); const jobTitle = gachaApplyBtn.dataset.jobTitle; if (!appliedJobs.some(aj => aj.id === jobId)) { appliedJobs.push({ id: jobId, date: new Date().toISOString() }); localStorage.setItem('appliedJobs', JSON.stringify(appliedJobs)); showAlert(`「${jobTitle}」への応募完了やで！`); } else { showAlert(`「${jobTitle}」にはもう応募しとるで。`, 'error'); } closeModal(gachaResultModal); });
+        gachaModalBody.addEventListener('click', (e) => { const button = e.target.closest('.view-details-btn'); if (button) { closeModal(gachaResultModal); setTimeout(() => { openDetailsModal(parseInt(button.dataset.jobId, 10)); }, 300); } });
+        
+        shobon.addEventListener('click', () => {
+            if (speechSynthesis.speaking) return;
+            const messages = [
+                "働いたら負けやと思っとる",
+                "イッチ、がんばれ",
+                "ファッ！？",
+                "とりあえずビール、やな",
+                "なんやこのサイト…",
+                "ワイはニート、プロやで",
+                "その仕事、ええんか？",
+                "草生える",
+                "働きたくないンゴ…", 
+                "ガチャはいいぞ。", 
+                "明日はなんとかなる。", 
+                "草", 
+                "もう終わりだよこのサイト"
+            ];
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            
+            // 吹き出し
+            if (speechBubbleTimeoutId) clearTimeout(speechBubbleTimeoutId);
+            speechBubble.textContent = message;
+            const shobonRect = shobon.getBoundingClientRect();
+            speechBubble.style.top = `${shobonRect.top - shobonRect.height - 10}px`;
+            speechBubble.style.left = `${shobonRect.left}px`;
+            speechBubble.classList.remove('fade-out');
+            speechBubble.classList.add('visible');
+            speechBubbleTimeoutId = setTimeout(() => {
+                speechBubble.classList.add('fade-out');
+                setTimeout(() => speechBubble.classList.remove('visible'), 500);
+            }, 2500);
+
+            // 読み上げ
+            const utterance = new SpeechSynthesisUtterance(message);
+            utterance.lang = 'ja-JP';
+            speechSynthesis.speak(utterance);
+            
+            playSound('A5', '16n');
+        });
+    </script>
+</body>
+</html>
